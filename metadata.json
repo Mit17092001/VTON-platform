@@ -1,0 +1,6 @@
+{
+  "name": "VogueAI Virtual Fitting Room",
+  "description": "Production-grade AI virtual try-on experience featuring FLUX.1/SDXL pipeline visualization, SAM masking, and IP-Adapter texture preservation.",
+  "requestFramePermissions": [],
+  "majorCapabilities": []
+}
