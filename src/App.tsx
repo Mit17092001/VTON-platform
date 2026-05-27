@@ -6,15 +6,15 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { 
-  Upload, 
-  Sparkles, 
-  Layers, 
-  Maximize2, 
-  ChevronRight, 
-  Info, 
-  CheckCircle2, 
-  Camera, 
+import {
+  Upload,
+  Sparkles,
+  Layers,
+  Maximize2,
+  ChevronRight,
+  Info,
+  CheckCircle2,
+  Camera,
   Shirt,
   Scan,
   Zap,
@@ -32,16 +32,16 @@ const SectionHeader = ({ title, subtitle }: { title: string; subtitle?: string }
   </div>
 );
 
-const PipelineStep = ({ 
-  icon: Icon, 
-  title, 
-  status, 
-  description 
-}: { 
-  icon: any; 
-  title: string; 
-  status: 'pending' | 'processing' | 'completed'; 
-  description: string 
+const PipelineStep = ({
+  icon: Icon,
+  title,
+  status,
+  description
+}: {
+  icon: any;
+  title: string;
+  status: 'pending' | 'processing' | 'completed';
+  description: string
 }) => (
   <div className={`pipeline-step transition-opacity duration-500 ${status === 'pending' ? 'opacity-40' : 'opacity-100'}`}>
     <div className="flex items-start gap-4">
@@ -70,7 +70,7 @@ export default function App() {
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
   const [resultImage, setResultImage] = useState<string | null>(null);
   const [usedModel, setUsedModel] = useState<string | null>(null);
-  const [alignmentData, setAlignmentData] = useState<{torso_box: number[], garment_box: number[]} | null>(null);
+  const [alignmentData, setAlignmentData] = useState<{ torso_box: number[], garment_box: number[] } | null>(null);
   const [hasApiKey, setHasApiKey] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const garmentInputRef = useRef<HTMLInputElement>(null);
@@ -104,7 +104,7 @@ export default function App() {
       setHasApiKey(true);
       // Proceed after selection
     }
-    
+
     setState('processing');
     setProcessingProgress(0);
 
@@ -121,7 +121,7 @@ export default function App() {
 
     try {
       const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
-      
+
       const modelAsset = await toBase64(modelImage);
       const garmentAsset = await toBase64(garmentImage);
 
@@ -129,7 +129,7 @@ export default function App() {
         // Stage 1: Structural & Mask Analysis (The "SAM" substitute)
         setProcessingProgress(15);
         const structureResponse = await ai.models.generateContent({
-          model: "gemini-3.1-flash-lite-preview",
+          model: "gemini-3.1-pro-preview",
           contents: [
             { text: "Analyze this virtual try-on task. Image 1 is the person, Image 2 is the garment. 1. Provide a 15-point polygon 'torso_poly' [[y,x],...] tracing the garment area on the person. 2. Describe the fabric texture, tension, and pose-specific drape requirements. 3. Identify lighting direction. Return ONLY a valid JSON object: {\"torso_poly\": [[y,x],...], \"analysis\": \"string\", \"lighting\": \"string\"}" },
             { inlineData: { mimeType: modelAsset.mime, data: modelAsset.data } },
@@ -147,14 +147,14 @@ export default function App() {
           console.error("Failed to parse structural data", e);
           structData = { torso_poly: [[0.22, 0.25], [0.22, 0.75], [0.72, 0.75], [0.72, 0.25]], analysis: "Standard alignment applied.", lighting: "Ambient" };
         }
-        
+
         setAlignmentData(structData);
         setAiAnalysis(structData.analysis || "Structural analysis completed.");
         setProcessingProgress(40);
 
         // Stage 2: Prompt Orchestration (Integrating Analysis)
         const orchestratorResponse = await ai.models.generateContent({
-          model: "gemini-3.1-flash-lite-preview",
+          model: "gemini-3.1-pro-preview",
           contents: [
             { text: `Based on this analysis: "${structData.analysis}" and lighting: "${structData.lighting}", create a hyper-detailed prompt for an image generation model to replace the clothing in Image 1 with the item in Image 2. Focus on: seamless neck-line integration, fabric folds matching the person's pose, and 100% color/texture accuracy from Image 2. Output ONLY the prompt string.` },
             { inlineData: { mimeType: modelAsset.mime, data: modelAsset.data } },
@@ -184,7 +184,7 @@ export default function App() {
 
           const fluxResult = await apiResponse.json();
           const imageUrl = fluxResult.image?.url || fluxResult.images?.[0]?.url;
-          
+
           if (imageUrl) {
             setResultImage(imageUrl);
             setUsedModel(fluxResult.model_id || "fal-ai/flux-vton");
@@ -198,10 +198,10 @@ export default function App() {
         } catch (fluxErr: any) {
           console.warn("FLUX Engine failed, falling back to Gemini synthesis:", fluxErr);
           setAiAnalysis(`FLUX Engine: ${fluxErr.message}. Utilizing Gemini fallback.`);
-          
+
           // Fallback to Gemini 3.1 Flash Image Preview (Nano Banana 2)
           const response = await ai.models.generateContent({
-            model: "gemini-3.1-flash-lite-preview",
+            model: "gemini-3.1-flash-image-preview",
             contents: {
               parts: [
                 {
@@ -239,7 +239,7 @@ export default function App() {
             throw new Error("No image generated by model.");
           }
 
-          setUsedModel("gemini-3.1-flash-lite-preview");
+          setUsedModel("gemini-3.1-flash-image-preview");
           setProcessingProgress(100);
           setState('result');
         }
@@ -248,9 +248,9 @@ export default function App() {
       console.error("Nano Banana 2 generation failed", err);
       // Fallback message if 404/auth issue
       if (err.message?.includes("not found") || err.message?.includes("404")) {
-         await (window as any).aistudio?.openSelectKey();
+        await (window as any).aistudio?.openSelectKey();
       }
-      
+
       // Fallback to legacy composite if AI fails
       setAiAnalysis("Network heavy; falling back to rapid local compositing engine.");
       setUsedModel("legacy-composite");
@@ -293,23 +293,23 @@ export default function App() {
 
   const generateResultComposite = () => {
     if (!modelImage || !garmentImage) return;
-    
+
     const canvas = document.createElement('canvas');
     const ctx = canvas.getContext('2d', { willReadFrequently: true });
     if (!ctx) return;
 
     const imgModel = new Image();
     const imgGarment = new Image();
-    
+
     imgModel.crossOrigin = "anonymous";
     imgGarment.crossOrigin = "anonymous";
-    
+
     imgModel.onload = () => {
       canvas.width = imgModel.width;
       canvas.height = imgModel.height;
-      
+
       ctx.drawImage(imgModel, 0, 0);
-      
+
       imgGarment.onload = () => {
         const gCanvas = document.createElement('canvas');
         const gCtx = gCanvas.getContext('2d', { willReadFrequently: true });
@@ -322,7 +322,7 @@ export default function App() {
         // Advanced Background Removal (Isolate Garment)
         const gData = gCtx.getImageData(0, 0, gCanvas.width, gCanvas.height);
         const pixels = gData.data;
-        
+
         // Sampling multiple corners for background detection
         const corners = [
           [pixels[0], pixels[1], pixels[2]],
@@ -331,22 +331,22 @@ export default function App() {
         ];
 
         for (let i = 0; i < pixels.length; i += 4) {
-          const r = pixels[i], g = pixels[i+1], b = pixels[i+2];
+          const r = pixels[i], g = pixels[i + 1], b = pixels[i + 2];
           let isBg = false;
           for (const s of corners) {
             const diff = Math.abs(r - s[0]) + Math.abs(g - s[1]) + Math.abs(b - s[2]);
             if (diff < 40) isBg = true;
           }
           if (isBg || (r > 240 && g > 240 && b > 240)) {
-            pixels[i+3] = 0;
+            pixels[i + 3] = 0;
           }
         }
-        
+
         // Soften edges via alpha feathering
         for (let i = 4 * gCanvas.width; i < pixels.length - 4 * gCanvas.width; i += 4) {
-          if (pixels[i+3] > 0) {
-            const neighborAlpha = pixels[i-4+3] + pixels[i+4+3] + pixels[i - 4*gCanvas.width + 3] + pixels[i + 4*gCanvas.width + 3];
-            if (neighborAlpha < 1000) pixels[i+3] *= 0.5; // Feather edges
+          if (pixels[i + 3] > 0) {
+            const neighborAlpha = pixels[i - 4 + 3] + pixels[i + 4 + 3] + pixels[i - 4 * gCanvas.width + 3] + pixels[i + 4 * gCanvas.width + 3];
+            if (neighborAlpha < 1000) pixels[i + 3] *= 0.5; // Feather edges
           }
         }
         gCtx.putImageData(gData, 0, 0);
@@ -381,7 +381,7 @@ export default function App() {
 
         const gb = getPolyBounds(garment_poly);
         const tb = getPolyBounds(torso_poly);
-        
+
         const sx = gb.xmin * imgGarment.width;
         const sy = gb.ymin * imgGarment.height;
         const sw = (gb.xmax - gb.xmin) * imgGarment.width;
@@ -393,7 +393,7 @@ export default function App() {
         const th = (tb.ymax - tb.ymin) * canvas.height;
 
         ctx.save();
-        
+
         // Step 1: Agnostic Neutralization (Primary Anti-Ghosting)
         // We fill the old shirt area with skin-aligned color to hide logos
         ctx.beginPath();
@@ -406,7 +406,7 @@ export default function App() {
         ctx.closePath();
         ctx.fillStyle = skinTone;
         ctx.fill();
-        
+
         // Step 2: Overlay a slight blurred version of the model to keep natural transitions
         ctx.save();
         ctx.clip();
@@ -418,7 +418,7 @@ export default function App() {
         ctx.clip();
         ctx.globalAlpha = 1.0;
         ctx.drawImage(gCanvas, sx, sy, sw, sh, tx, ty, tw, th);
-        
+
         // Step 4: IDM-VTON Shadow Reconstruction
         // Re-apply light/shadow using the desaturated map to avoid pattern artifacts
         ctx.globalCompositeOperation = 'overlay';
@@ -428,7 +428,7 @@ export default function App() {
         ctx.globalCompositeOperation = 'multiply';
         ctx.globalAlpha = 0.3;
         ctx.drawImage(shadowCanvas, 0, 0);
-        
+
         ctx.restore();
 
         // Step 4: Edge Softening Pass (Feathering the result silhouette)
@@ -445,7 +445,7 @@ export default function App() {
         ctx.filter = 'blur(1px)';
         ctx.fill();
         ctx.restore();
-        
+
         try {
           setResultImage(canvas.toDataURL('image/png'));
         } catch (e) {
@@ -492,15 +492,15 @@ export default function App() {
 
       {/* Main Layout */}
       <main className="max-w-[1400px] mx-auto pt-32 px-8 grid grid-cols-1 lg:grid-cols-[1fr_400px] gap-12">
-        
+
         {/* Left Column: Interaction Area */}
         <div className="space-y-12">
           <SectionHeader title="Universal Integration" subtitle="Generative AI / Fashion E-commerce" />
-          
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8 h-[600px]">
             {/* Model Card */}
             <div className="flex flex-col gap-4 h-full">
-              <div 
+              <div
                 className="luxury-card group relative flex flex-col justify-center items-center overflow-hidden cursor-pointer flex-1"
                 onClick={() => fileInputRef.current?.click()}
               >
@@ -532,7 +532,7 @@ export default function App() {
 
             {/* Garment Card */}
             <div className="flex flex-col gap-4 h-full">
-              <div 
+              <div
                 className="luxury-card group relative flex flex-col justify-center items-center overflow-hidden cursor-pointer flex-1"
                 onClick={() => garmentInputRef.current?.click()}
               >
@@ -576,7 +576,7 @@ export default function App() {
                 <p className="text-xs text-[#8c8c8c] mt-1 italic">Preserving texture, drape, and human pose structure</p>
               </div>
             </div>
-            <button 
+            <button
               onClick={startVTO}
               disabled={!modelImage || !garmentImage || state === 'processing'}
               className="w-full md:w-auto px-10 py-4 bg-[#1a1a1a] text-white text-xs uppercase tracking-[0.2em] hover:opacity-90 disabled:opacity-30 transition-all flex items-center justify-center gap-3"
@@ -589,7 +589,7 @@ export default function App() {
           {/* AI Insights (Gemini) */}
           <AnimatePresence>
             {aiAnalysis && state !== 'processing' && (
-              <motion.div 
+              <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 className="p-8 border border-[#e5e1da] bg-white space-y-4"
@@ -615,27 +615,27 @@ export default function App() {
             </h3>
 
             <div className="space-y-0">
-              <PipelineStep 
-                icon={Scan} 
-                title="Semantic Structural Analysis" 
+              <PipelineStep
+                icon={Scan}
+                title="Semantic Structural Analysis"
                 status={state === 'processing' || state === 'result' ? (processingProgress > 25 ? 'completed' : 'processing') : 'pending'}
                 description="Gemini 3.1 Pro analyzing pose, lighting, and garment texture for grounded synthesis."
               />
-              <PipelineStep 
-                icon={Frame} 
-                title="Precision SAM Masking" 
+              <PipelineStep
+                icon={Frame}
+                title="Precision SAM Masking"
                 status={state === 'processing' || state === 'result' ? (processingProgress > 50 ? 'completed' : (processingProgress > 25 ? 'processing' : 'pending')) : 'pending'}
                 description="Generating high-fidelity 15-point polygon masks for precise cloth boundaries."
               />
-              <PipelineStep 
-                icon={Layers} 
-                title="Latent Prompt Orchestration" 
+              <PipelineStep
+                icon={Layers}
+                title="Latent Prompt Orchestration"
                 status={state === 'processing' || state === 'result' ? (processingProgress > 75 ? 'completed' : (processingProgress > 50 ? 'processing' : 'pending')) : 'pending'}
                 description="Synthesizing visual tokens into hyper-descriptive instructions for the Flux engine."
               />
-              <PipelineStep 
-                icon={Sparkles} 
-                title="Flux-Engine Synthesis" 
+              <PipelineStep
+                icon={Sparkles}
+                title="Flux-Engine Synthesis"
                 status={state === 'processing' || state === 'result' ? (processingProgress >= 100 ? 'completed' : (processingProgress > 75 ? 'processing' : 'pending')) : 'pending'}
                 description="High-fidelity diffusion synthesis prioritizing garment identity and drape realism."
               />
@@ -648,7 +648,7 @@ export default function App() {
                   <span>{processingProgress}%</span>
                 </div>
                 <div className="h-[1px] w-full bg-[#f0ede8]">
-                  <motion.div 
+                  <motion.div
                     className="h-full bg-[#1a1a1a]"
                     initial={{ width: 0 }}
                     animate={{ width: `${processingProgress}%` }}
@@ -659,7 +659,7 @@ export default function App() {
             )}
 
             {state === 'result' && (
-              <motion.div 
+              <motion.div
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 className="mt-8 pt-8 border-t border-[#e5e1da]"
@@ -671,7 +671,7 @@ export default function App() {
                   </span>
                 </div>
                 <div className="luxury-card bg-[#f5f2ed] border-dashed p-4 text-center space-y-4">
-                  <div 
+                  <div
                     className="relative aspect-[3/4] bg-white border border-[#e5e1da] overflow-hidden cursor-pointer group"
                     onClick={handleDownload}
                   >
@@ -681,7 +681,7 @@ export default function App() {
                       <p className="text-[10px] uppercase tracking-widest font-medium">Click to Download Export</p>
                     </div>
                   </div>
-                  <button 
+                  <button
                     onClick={() => setIsPreviewOpen(true)}
                     className="w-full py-3 bg-[#1a1a1a] text-white text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 hover:opacity-90 transition-opacity"
                   >
@@ -720,30 +720,30 @@ export default function App() {
           <SectionHeader title="Performance Showcase" subtitle="Production-Grade Outputs" />
           <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
             <div className="luxury-card overflow-hidden group">
-               <div className="relative aspect-video bg-[#f5f2ed]">
-                 <img src="https://images.unsplash.com/photo-1492707892479-7bc8d5a4ee93?auto=format&fit=crop&q=80&w=1000" alt="Female Performance" className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" />
-                 <div className="absolute bottom-4 left-4 bg-white/90 backdrop-blur-sm px-3 py-1.5 text-[9px] uppercase tracking-widest border border-[#e5e1da]">
-                   High Fidelity Texture (Designer Collection)
-                 </div>
-               </div>
+              <div className="relative aspect-video bg-[#f5f2ed]">
+                <img src="https://images.unsplash.com/photo-1492707892479-7bc8d5a4ee93?auto=format&fit=crop&q=80&w=1000" alt="Female Performance" className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" />
+                <div className="absolute bottom-4 left-4 bg-white/90 backdrop-blur-sm px-3 py-1.5 text-[9px] uppercase tracking-widest border border-[#e5e1da]">
+                  High Fidelity Texture (Designer Collection)
+                </div>
+              </div>
             </div>
             <div className="luxury-card overflow-hidden group">
-               <div className="relative aspect-video bg-[#f5f2ed]">
-                 <img src="https://images.unsplash.com/photo-1617137968427-85924c800a22?auto=format&fit=crop&q=80&w=1000" alt="Male Performance" className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" />
-                 <div className="absolute bottom-4 left-4 bg-white/90 backdrop-blur-sm px-3 py-1.5 text-[9px] uppercase tracking-widest border border-[#e5e1da]">
-                   Pose-Aware Draping (Streetwear)
-                 </div>
-               </div>
+              <div className="relative aspect-video bg-[#f5f2ed]">
+                <img src="https://images.unsplash.com/photo-1617137968427-85924c800a22?auto=format&fit=crop&q=80&w=1000" alt="Male Performance" className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" />
+                <div className="absolute bottom-4 left-4 bg-white/90 backdrop-blur-sm px-3 py-1.5 text-[9px] uppercase tracking-widest border border-[#e5e1da]">
+                  Pose-Aware Draping (Streetwear)
+                </div>
+              </div>
             </div>
           </div>
         </div>
-        
+
         <div className="max-w-[1400px] mx-auto flex flex-col md:flex-row justify-between items-start md:items-center gap-8">
           <div className="space-y-2">
-             <h3 className="font-serif text-2xl">Virtual Fitting Ecosystem</h3>
-             <p className="text-xs text-[#8c8c8c] max-w-sm">
-               An end-to-end pipeline integrating SAM, ControlNet (Canny + Depth), and IP-Adapter features for fashion-optimized generations.
-             </p>
+            <h3 className="font-serif text-2xl">Virtual Fitting Ecosystem</h3>
+            <p className="text-xs text-[#8c8c8c] max-w-sm">
+              An end-to-end pipeline integrating SAM, ControlNet (Canny + Depth), and IP-Adapter features for fashion-optimized generations.
+            </p>
           </div>
           <div className="flex gap-12">
             <div>
@@ -769,14 +769,14 @@ export default function App() {
       {/* Full Preview Modal */}
       <AnimatePresence>
         {isPreviewOpen && (
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 p-8"
             onClick={() => setIsPreviewOpen(false)}
           >
-            <motion.div 
+            <motion.div
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               className="relative max-w-4xl w-full h-[80vh] bg-white overflow-hidden luxury-card"
@@ -785,13 +785,13 @@ export default function App() {
               <div className="absolute top-0 w-full p-6 flex justify-between items-center z-10 glass-morphism border-0 border-b border-[#e5e1da]">
                 <h3 className="font-serif text-xl tracking-tight">VogueAI Inference Result</h3>
                 <div className="flex gap-4">
-                  <button 
+                  <button
                     onClick={handleDownload}
                     className="px-4 py-2 bg-[#1a1a1a] text-white text-[10px] uppercase tracking-widest flex items-center gap-2"
                   >
                     <Download size={14} /> Download 4K Export
                   </button>
-                  <button 
+                  <button
                     onClick={() => setIsPreviewOpen(false)}
                     className="p-2 text-[#1a1a1a] hover:bg-[#f5f2ed] transition-colors"
                   >
@@ -800,9 +800,9 @@ export default function App() {
                 </div>
               </div>
               <div className="h-full pt-20 flex items-center justify-center bg-[#fdfaf6]">
-                <img 
-                  src={resultImage || modelImage!} 
-                  alt="High resolution result" 
+                <img
+                  src={resultImage || modelImage!}
+                  alt="High resolution result"
                   className="max-h-full object-contain"
                 />
               </div>
